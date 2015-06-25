@@ -1,0 +1,181 @@
+/*!
+ * express-github-docs
+ * Copyright(c) 2015 Miska Kaipiainen
+ * MIT Licensed
+ */
+
+var path = require('path'),
+    marked = require('marked'),
+    fm = require('front-matter'),
+    fs = require('fs-extended'),
+    url = require('url');
+
+var expressgh = function(root, options){
+    if (!root) {
+        throw new TypeError('root path required')
+    }
+
+    if (typeof root !== 'string') {
+        throw new TypeError('root path must be a string')
+    }
+
+    // defaults
+    var o = options || {};
+    o.ghUser = o.ghUser || "";
+    o.ghRepo = o.ghRepo || "";
+    o.ghBranch = o.ghBranch || "master";
+    o.ghDir = o.ghDir || "";
+    o.render = o.render || true;
+    o.defaultLayout = o.defaultLayout || "docs";
+    o.defaultTemplate = o.defaultTemplate || "docs";
+
+    // sanitize root
+    root = path.resolve(root);
+
+    // rebase links
+    var rebaseLinksPath = "";
+    
+    // initialize marked renderer
+    var renderer = new marked.Renderer();
+    renderer.link = function (href, title, text) {
+
+        var localUrl = rebaseLink(rebaseLinksPath, href, o);
+
+        var out = '<a href="' + localUrl + '"';
+        if (title) {
+            out += ' title="' + title + '"';
+        }
+        out += '>' + text + '</a>';
+        return out;
+
+    };
+
+    marked.setOptions({
+        renderer: renderer,
+        gfm: true,
+        tables: true,
+        breaks: false,
+        pedantic: false,
+        sanitize: true,
+        smartLists: true,
+        smartypants: false
+    });
+
+    return function expressgh(req, res, next) {
+
+        // set rebase link path
+        rebaseLinksPath = req.baseUrl;
+
+        // resolve filepath
+        var filePath = path.join(root, req.url);
+
+        console.log(req);
+
+        // remove trailing slash
+        if(filePath[filePath.length-1] === path.sep) filePath = filePath.slice(0,-1);
+
+        // lookup for the file
+        if(fs.existsSync(filePath + ".md")){
+            filePath = filePath + ".md";
+        } else if(fs.existsSync(filePath + path.sep + "readme.md")){
+            filePath = filePath + path.sep + "readme.md"
+        } else {
+            next();
+            return;
+        }
+
+        // get the file contents
+        var rawFile = fs.readFileSync(filePath, 'utf8');
+
+        // parse front matter
+        req.gh = fm(rawFile);
+
+        // parse content
+        if(req.gh && req.gh.body){
+            req.gh.content = marked(req.gh.body);
+        }
+
+        // render
+        if(o.render && req.gh && req.gh.content){
+
+            // expose front matter attributes to template
+            var attr = req.gh.attributes || {};
+            attr.content = req.gh.content;
+
+            // if no layout or template, use defaults
+            if(!attr.layout) attr.layout = o.defaultLayout;
+            if(!attr.template) attr.template = o.defaultTemplate;
+
+            res.render(attr.template, attr);
+
+        } else {
+
+            next();
+
+        }
+    };
+
+};
+
+function rebaseLink(rebaseRoot, href, o){
+
+    o = o || {};
+
+    var pUrl = url.parse(href);
+    var localUrl = pUrl.path;
+
+    // rebase absolute URLs if the host is github.com
+    if(pUrl.host){
+
+        if(o.ghUser && o.ghRepo && (pUrl.host == "github.com")){
+
+            // ONLY rebase matching absolute GitHub links
+            var ghTreeLink = "/" + [o.ghUser, o.ghRepo, "tree", o.ghBranch, o.ghDir].join("/");
+            var ghBlobLink = "/" + [o.ghUser, o.ghRepo, "blob", o.ghBranch, o.ghDir].join("/");
+
+            if(pUrl.path.indexOf(ghTreeLink) == 0){
+                localUrl = rebaseRoot + pUrl.path.substring(ghTreeLink.length);
+            } else if(pUrl.path.indexOf(ghBlobLink) == 0){
+                localUrl = rebaseRoot + pUrl.path.substring(ghBlobLink.length);
+            } else {
+
+                // cannot rebase anything
+                return href;
+
+            }
+
+        } else {
+
+            // cannot rebase anything
+            return href;
+
+        }
+
+        // rebase any other absolute URLs
+    } else if((localUrl.length > 0) && (localUrl[0] == "/")){
+
+        localUrl = rebaseRoot + localUrl;
+
+    }
+
+    // remove readme.md && .md
+    if((localUrl.length > 3) && (localUrl.substr(-3) == ".md")){
+
+        // remove .md
+        localUrl = localUrl.substr(0, localUrl.length-3);
+
+        // remove readme
+        if((localUrl.length > 6) && (localUrl.substr(-6).toLowerCase() == "readme")){
+            localUrl = localUrl.substr(0, localUrl.length-6);
+        }
+    }
+
+    // remove trailing slash
+    if((localUrl.length > 1) && (localUrl.substr(-1) == "/")){
+        localUrl = localUrl.substr(0, localUrl.length-1);
+    }
+
+    return localUrl;
+}
+
+module.exports = expressgh;
