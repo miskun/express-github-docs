@@ -114,10 +114,12 @@ var expressgh = function(root, options){
         // parse content
         if(req.gh && req.gh.body){
             req.gh.content = marked(req.gh.body);
+        } else {
+            req.gh.content = "";
         }
 
         // render
-        if(o.render && req.gh && req.gh.content){
+        if(o.render && req.gh && (typeof req.gh.content !== 'undefined')){
 
             // expose front matter attributes to template
             var attr = req.gh.attributes || {};

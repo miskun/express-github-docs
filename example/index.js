@@ -15,9 +15,11 @@ app.engine('hbs', expresshbs({
 app.set('view engine', 'hbs');
 app.set('views', path.join(__dirname, 'views'));
 
-app.use('/docs', docs('docs', {
+app.use(docs('../docs', {
     'ghUser': 'miskun',
     'ghRepo': 'express-github-docs',
     'ghDir': 'docs'
 }));
+
 app.listen(3000);
+console.log('Open browser at: http://localhost:3000');
