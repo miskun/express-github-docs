@@ -52,6 +52,18 @@ var expressgh = function(root, options){
         return out;
 
     };
+    renderer.image = function(href, title, text){
+
+        var localUrl = rebaseLink(rebaseLinksPath, href, o);
+
+        var out = '<img src="' + localUrl + '" alt="' + text + '"';
+        if (title) {
+            out += ' title="' + title + '"';
+        }
+        out += '/>';
+        return out;
+
+    };
 
     marked.setOptions({
         renderer: renderer,
@@ -79,7 +91,15 @@ var expressgh = function(root, options){
         if(fs.existsSync(filePath + ".md")){
             filePath = filePath + ".md";
         } else if(fs.existsSync(filePath + path.sep + "readme.md")){
+
+            // just to preserve relative paths in .md files
+            if(req.originalUrl[req.originalUrl.length-1] !== "/" ){
+                res.redirect(req.originalUrl + "/");
+                return;
+            }
+
             filePath = filePath + path.sep + "readme.md"
+
         } else {
             serveStatic(req, res, next);
             return;
@@ -128,16 +148,19 @@ function rebaseLink(rebaseRoot, href, o){
     // rebase absolute URLs if the host is github.com
     if(pUrl.host){
 
-        if(o.ghUser && o.ghRepo && (pUrl.host == "github.com")){
+        if(o.ghUser && o.ghRepo && ((pUrl.host == "github.com") || (pUrl.host == "raw.githubusercontent.com"))) {
 
             // ONLY rebase matching absolute GitHub links
             var ghTreeLink = "/" + [o.ghUser, o.ghRepo, "tree", o.ghBranch, o.ghDir].join("/");
             var ghBlobLink = "/" + [o.ghUser, o.ghRepo, "blob", o.ghBranch, o.ghDir].join("/");
+            var ghRawLink = "/" + [o.ghUser, o.ghRepo, o.ghBranch, o.ghDir].join("/");
 
-            if(pUrl.path.indexOf(ghTreeLink) == 0){
+            if (pUrl.path.indexOf(ghTreeLink) == 0) {
                 localUrl = rebaseRoot + pUrl.path.substring(ghTreeLink.length);
-            } else if(pUrl.path.indexOf(ghBlobLink) == 0){
+            } else if (pUrl.path.indexOf(ghBlobLink) == 0) {
                 localUrl = rebaseRoot + pUrl.path.substring(ghBlobLink.length);
+            } else if(pUrl.path.indexOf(ghRawLink) == 0) {
+                localUrl = rebaseRoot + pUrl.path.substring(ghRawLink.length);
             } else {
 
                 // cannot rebase anything
