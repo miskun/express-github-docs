@@ -8,7 +8,8 @@ var path = require('path'),
     marked = require('marked'),
     fm = require('front-matter'),
     fs = require('fs-extended'),
-    url = require('url');
+    url = require('url'),
+    ServeStatic = require('serve-static');
 
 var expressgh = function(root, options){
     if (!root) {
@@ -31,6 +32,8 @@ var expressgh = function(root, options){
 
     // sanitize root
     root = path.resolve(root);
+
+    var serveStatic = ServeStatic(root);
 
     // rebase links
     var rebaseLinksPath = "";
@@ -69,18 +72,16 @@ var expressgh = function(root, options){
         // resolve filepath
         var filePath = path.join(root, req.url);
 
-        console.log(req);
-
         // remove trailing slash
         if(filePath[filePath.length-1] === path.sep) filePath = filePath.slice(0,-1);
 
-        // lookup for the file
+        // lookup for the .md file, else serve static file
         if(fs.existsSync(filePath + ".md")){
             filePath = filePath + ".md";
         } else if(fs.existsSync(filePath + path.sep + "readme.md")){
             filePath = filePath + path.sep + "readme.md"
         } else {
-            next();
+            serveStatic(req, res, next);
             return;
         }
 

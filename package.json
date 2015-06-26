@@ -22,7 +22,8 @@
   "dependencies": {
     "front-matter": "^1.0.0",
     "fs-extended": "^0.2.0",
-    "marked": "^0.3.3"
+    "marked": "^0.3.3",
+    "serve-static": "^1.10.0"
   },
   "devDependencies": {
     "express": "^4.13.0",
