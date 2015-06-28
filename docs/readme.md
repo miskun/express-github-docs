@@ -1,3 +1,8 @@
+---
+title: Express Github Docs
+toc_hide: true
+---
+
 # Express Github Docs
 
 > The documentation is still a work in progress, so any feedback and requests are welcome. If you feel like something is missing, please [open an issue](https://github.com/miskun/express-github-docs/issues) at GitHub.

@@ -10,6 +10,7 @@ var path = require('path'),
     fs = require('fs-extended'),
     url = require('url'),
     ghPuller = require('node-gh-repo-puller'),
+    cheerio = require('cheerio'),
     ServeStatic = require('serve-static');
 
 var expressgh = function(root, options){
@@ -32,35 +33,18 @@ var expressgh = function(root, options){
     o.defaultTemplate = o.defaultTemplate || "docs";
     o.syncUrl = o.syncUrl || "_sync";
     o.syncOnStart = o.syncOnStart || false;
-
-    // sanitize root
-    root = path.resolve(root);
+    o.root = path.resolve(root);
 
     // sanitize sync url; ensure leading "/" and remove trailing "/"
     if((o.syncUrl.length > 0) && (o.syncUrl[0] != "/")) o.syncUrl = "/" + o.syncUrl;
     if((o.syncUrl.length > 0) && (o.syncUrl[o.syncUrl.length-1] == "/")) o.syncUrl = o.syncUrl.substr(-1);
 
-    if(o.syncOnStart && o.ghUser && o.ghRepo){
-        ghPuller({
-            user: o.ghUser,
-            repo: o.ghRepo,
-            dir: o.ghDir,
-            branch: o.ghBranch,
-            target: root
-        }, function (err, result) {
-            if(!err){
-                console.log("Sync Done!");
-            } else {
-                throw new Error('Unable to sync GitHub repository!')
-            }
-        });
-    }
-
-    var serveStatic = ServeStatic(root);
+    // init static files server
+    var serveStatic = ServeStatic(o.root);
 
     // rebase links
     var rebaseLinksPath = "";
-    
+
     // initialize marked renderer
     var renderer = new marked.Renderer();
     renderer.link = function (href, title, text) {
@@ -87,7 +71,6 @@ var expressgh = function(root, options){
         return out;
 
     };
-
     marked.setOptions({
         renderer: renderer,
         gfm: true,
@@ -99,37 +82,37 @@ var expressgh = function(root, options){
         smartypants: false
     });
 
+    if(o.syncOnStart){
+        syncGithub(o, function(e){
+            if(!e){
+                console.log("Sync with GitHub repository ["+ o.ghUser + "/" + o.ghRepo + "] done!");
+            } else {
+                console.log("Unable to sync with GitHub repository ["+ o.ghUser + "/" + o.ghRepo + "]!");
+                console.log(e);
+            }
+        });
+    }
+
     return function expressgh(req, res, next) {
 
         // set rebase link path
         rebaseLinksPath = req.baseUrl;
 
         // resolve filepath
-        var filePath = path.join(root, req.url);
+        var filePath = path.join(o.root, req.url);
 
         // remove trailing slash
         if(filePath[filePath.length-1] === path.sep) filePath = filePath.slice(0,-1);
 
         // is sync url?
         if(req.url == o.syncUrl){
-            if(o.ghUser && o.ghRepo){
-                ghPuller({
-                    user: o.ghUser,
-                    repo: o.ghRepo,
-                    dir: o.ghDir,
-                    branch: o.ghBranch,
-                    target: root
-                }, function (err) {
-                    if(!err){
-                        res.send("Sync with GitHub done!");
-                        return;
-                    } else {
-                        res.send(err);
-                        return;
-                    }
-                    next();
-                });
-            }
+            syncGithub(o, function(e){
+                if(!e){
+                    res.send("Sync with GitHub repository ["+ o.ghUser + "/" + o.ghRepo + "] done!");
+                } else {
+                    res.send("Unable to sync with GitHub repository ["+ o.ghUser + "/" + o.ghRepo + "]!");
+                }
+            });
             return;
         }
 
@@ -248,6 +231,124 @@ function rebaseLink(rebaseRoot, href, o){
     }
 
     return localUrl;
+}
+
+function syncGithub(o, callback){
+    if((o.ghUser == "") || (o.ghRepo == "")){
+        callback("Can not sync with GitHub! Invalid GitHub user/repo name!");
+        return;
+    }
+    ghPuller({
+        user: o.ghUser,
+        repo: o.ghRepo,
+        dir: o.ghDir,
+        branch: o.ghBranch,
+        target: o.root
+    }, function(ghError){
+        if(!ghError){
+            getToc(o.root, function(tocError, toc){
+                if(!tocError){
+                    console.log(tocError, toc);
+                }
+                callback(tocError, toc);
+            });
+        } else {
+            callback(ghError);
+        }
+    });
+}
+
+function getToc(dir, callback){
+
+    var filesCount = 0;
+    var toc = {};
+
+    function getTocEntry(fileItem){
+        var filePath = path.join(dir, fileItem);
+
+        // we only care about .md files
+        if(fileItem.substr(-3) != ".md"){
+
+            filesCount--;
+            if(filesCount <= 0){
+                callback(null, toc);
+            }
+
+            return;
+        }
+
+        fs.readFile(filePath, 'utf8', function(err, rawFile){
+
+            function gotTitle(title){
+                // only add files with proper title
+                if(title != "")
+                    toc[fileItem] = title;
+
+                // check if we have processed everything?
+                filesCount--;
+                if(filesCount <= 0){
+                    callback(null, toc);
+                }
+            }
+
+            if(!err){
+
+                // parse title, default to fileItem
+                var defaultTitle = fileItem;
+                var fmFile = fm(rawFile);
+                if(fmFile.attributes.toc_title){
+                    gotTitle(fmFile.attributes.toc_title);
+                    return;
+                }
+                if(fmFile.attributes.title){
+                    gotTitle(fmFile.attributes.title);
+                    return;
+                }
+                if(fmFile.attributes.toc_hide){
+                    gotTitle("");
+                    return;
+                }
+                console.log(fmFile);
+                var mdFile = marked(fmFile.body);
+                var $ = cheerio.load(mdFile);
+
+                var $h = $('h1');
+                if($h.length > 0) {
+                    console.log($h.first().text());
+                    defaultTitle = $h.first().text();
+                }
+                gotTitle(defaultTitle);
+                return;
+
+            } else {
+                // should never happen...
+                // check if we have processed everything?
+                filesCount--;
+                if(filesCount <= 0){
+                    callback(null, toc);
+                }
+
+            }
+        });
+
+    }
+
+    fs.listAll(dir, { recursive: true }, function (err, files) {
+
+        if(!err){
+            if(files.length == 0){
+                callback(null, toc);
+            } else {
+                filesCount = files.length;
+                for(var i=0; i<files.length; i++){
+                    getTocEntry(files[i]);
+                }
+            }
+        } else {
+            callback(err);
+        }
+    })
+
 }
 
 module.exports = expressgh;

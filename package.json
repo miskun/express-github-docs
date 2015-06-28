@@ -20,6 +20,7 @@
   },
   "homepage": "https://github.com/miskun/express-github-docs",
   "dependencies": {
+    "cheerio": "^0.19.0",
     "front-matter": "^1.0.0",
     "fs-extended": "^0.2.0",
     "marked": "^0.3.3",
