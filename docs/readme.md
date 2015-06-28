@@ -1,8 +1,8 @@
 # Express Github Docs
 
-Welcome to Express Github Docs! Express Github Docs is [Express](http://expressjs.com/) middleware for generating documentation from GitHub repository.
+> The documentation is still a work in progress, so any feedback and requests are welcome. If you feel like something is missing, please [open an issue](https://github.com/miskun/express-github-docs/issues) at GitHub.
 
-The documentation is still a work in progress, so any feedback and requests are welcome. If you feel like something is missing, please [open an issue](https://github.com/miskun/express-github-docs/issues) at GitHub.
+Welcome to Express Github Docs! Express Github Docs is [Express](http://expressjs.com/) middleware for generating documentation from GitHub repository.
 
 ## How Does It Work?
 
@@ -41,6 +41,4 @@ app.use(docs('docs', {
 app.listen(3000);
 ```
 
-For more advanced usage instructions, please see:
-
-* [Complete Reference Guide](references/usage.md).
+For more advanced usage instructions, please see [Complete Reference Guide](references/usage.md).

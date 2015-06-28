@@ -23,6 +23,7 @@
     "front-matter": "^1.0.0",
     "fs-extended": "^0.2.0",
     "marked": "^0.3.3",
+    "node-gh-repo-puller": "^0.1.1",
     "serve-static": "^1.10.0"
   },
   "devDependencies": {

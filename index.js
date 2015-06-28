@@ -9,6 +9,7 @@ var path = require('path'),
     fm = require('front-matter'),
     fs = require('fs-extended'),
     url = require('url'),
+    ghPuller = require('node-gh-repo-puller'),
     ServeStatic = require('serve-static');
 
 var expressgh = function(root, options){
@@ -29,9 +30,31 @@ var expressgh = function(root, options){
     o.render = o.render || true;
     o.defaultLayout = o.defaultLayout || "docs";
     o.defaultTemplate = o.defaultTemplate || "docs";
+    o.syncUrl = o.syncUrl || "_sync";
+    o.syncOnStart = o.syncOnStart || false;
 
     // sanitize root
     root = path.resolve(root);
+
+    // sanitize sync url; ensure leading "/" and remove trailing "/"
+    if((o.syncUrl.length > 0) && (o.syncUrl[0] != "/")) o.syncUrl = "/" + o.syncUrl;
+    if((o.syncUrl.length > 0) && (o.syncUrl[o.syncUrl.length-1] == "/")) o.syncUrl = o.syncUrl.substr(-1);
+
+    if(o.syncOnStart && o.ghUser && o.ghRepo){
+        ghPuller({
+            user: o.ghUser,
+            repo: o.ghRepo,
+            dir: o.ghDir,
+            branch: o.ghBranch,
+            target: root
+        }, function (err, result) {
+            if(!err){
+                console.log("Sync Done!");
+            } else {
+                throw new Error('Unable to sync GitHub repository!')
+            }
+        });
+    }
 
     var serveStatic = ServeStatic(root);
 
@@ -86,6 +109,29 @@ var expressgh = function(root, options){
 
         // remove trailing slash
         if(filePath[filePath.length-1] === path.sep) filePath = filePath.slice(0,-1);
+
+        // is sync url?
+        if(req.url == o.syncUrl){
+            if(o.ghUser && o.ghRepo){
+                ghPuller({
+                    user: o.ghUser,
+                    repo: o.ghRepo,
+                    dir: o.ghDir,
+                    branch: o.ghBranch,
+                    target: root
+                }, function (err) {
+                    if(!err){
+                        res.send("Sync with GitHub done!");
+                        return;
+                    } else {
+                        res.send(err);
+                        return;
+                    }
+                    next();
+                });
+            }
+            return;
+        }
 
         // lookup for the .md file, else serve static file
         if(fs.existsSync(filePath + ".md")){
