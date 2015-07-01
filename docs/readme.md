@@ -1,6 +1,6 @@
 ---
-title: Express Github Docs
-toc_hide: true
+title: Overview
+toc_order: 1
 ---
 
 # Express Github Docs
@@ -46,4 +46,4 @@ app.use(docs('docs', {
 app.listen(3000);
 ```
 
-For more advanced usage instructions, please see [Complete Reference Guide](references/usage.md).
+For more advanced usage instructions, please see [Complete Reference Guide](usage/api-reference.md).
