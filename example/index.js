@@ -19,7 +19,7 @@ app.use(docs('docs', {
     'ghUser': 'miskun',
     'ghRepo': 'express-github-docs',
     'ghDir': 'docs',
-    'syncOnStart': false
+    'syncOnStart': true
 }));
 
 app.listen(3000);
