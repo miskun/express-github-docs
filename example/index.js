@@ -15,7 +15,7 @@ app.engine('hbs', expresshbs({
 app.set('view engine', 'hbs');
 app.set('views', path.join(__dirname, 'views'));
 
-app.use(docs('docs', {
+app.use("/docs", docs('docs', {
     'ghUser': 'miskun',
     'ghRepo': 'express-github-docs',
     'ghDir': 'docs',

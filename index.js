@@ -120,6 +120,7 @@ var expressgh = function(root, options){
             attr.egdtoc = "";
             if(!tocErr){
                 attr.egdtoc = tocRes.toHTML({
+                    rebasePath: req.baseUrl,
                     selected: req.url
                 });
             }
