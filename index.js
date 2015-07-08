@@ -33,6 +33,7 @@ var expressgh = function(root, options){
     o.syncUrl = o.syncUrl || "_sync";
     o.syncOnStart = o.syncOnStart || false;
     o.root = path.resolve(root);
+    o.debug = o.debug || false;
 
     // sanitize sync url; ensure leading "/" and remove trailing "/"
     if((o.syncUrl.length > 0) && (o.syncUrl[0] != "/")) o.syncUrl = "/" + o.syncUrl;
@@ -76,18 +77,21 @@ var expressgh = function(root, options){
         if(fs.existsSync(filePath + ".md")){
 
             filePath = filePath + ".md";
+            if(o.debug) console.log(req.url + " --> " + filePath);
 
         } else if(fs.existsSync(filePath + path.sep + "readme.md")){
 
             // just to preserve relative paths in .md files
             if(req.originalUrl[req.originalUrl.length-1] !== "/" ){
 
+                if(o.debug) console.log(req.url + " --> redirecting to " + req.originalUrl + "/");
                 res.redirect(req.originalUrl + "/");
                 return;
 
             }
 
-            filePath = filePath + path.sep + "readme.md"
+            filePath = filePath + path.sep + "readme.md";
+            if(o.debug) console.log(req.url + " --> " + filePath);
 
         } else {
 
