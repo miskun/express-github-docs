@@ -33,6 +33,7 @@ var expressgh = function(root, options){
     o.syncUrl = o.syncUrl || "_sync";
     o.syncOnStart = o.syncOnStart || false;
     o.root = path.resolve(root);
+    o.title = o.title || undefined;
 
     // sanitize sync url; ensure leading "/" and remove trailing "/"
     if((o.syncUrl.length > 0) && (o.syncUrl[0] != "/")) o.syncUrl = "/" + o.syncUrl;
@@ -120,6 +121,7 @@ var expressgh = function(root, options){
             attr.egdtoc = "";
             if(!tocErr){
                 attr.egdtoc = tocRes.toHTML({
+                    title: o.title,
                     rebasePath: req.baseUrl,
                     selected: req.url
                 });
