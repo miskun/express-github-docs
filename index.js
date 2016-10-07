@@ -56,7 +56,7 @@ var expressgh = function(root, options){
     return function expressgh(req, res, next) {
 
         // resolve filepath
-        var filePath = path.join(o.root, req.url);
+        var filePath = path.join(o.root, url.parse(req.url).pathname);
 
         // remove trailing slash
         if(filePath[filePath.length-1] === path.sep) filePath = filePath.slice(0,-1);
@@ -81,9 +81,17 @@ var expressgh = function(root, options){
         } else if(fs.existsSync(filePath + path.sep + "README.md")){
 
             // just to preserve relative paths in .md files
-            if(req.originalUrl[req.originalUrl.length-1] !== "/" ){
+            var foo = url.parse(req.originalUrl).pathname;
+            if(foo[foo.length-1] !== "/" ){
 
-                res.redirect(req.originalUrl + "/");
+                foo += "/";
+
+                var redirectTo = foo;
+                if(url.parse(req.originalUrl).search){
+                    redirectTo = foo + "?" + url.parse(req.originalUrl).search;
+                }
+
+                res.redirect(redirectTo);
                 return;
 
             }
