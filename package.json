@@ -1,6 +1,6 @@
 {
   "name": "express-github-docs",
-  "version": "0.6.8",
+  "version": "0.6.9",
   "description": "Express Middleware for Generating Documentation from GitHub Repository",
   "main": "index.js",
   "repository": {
